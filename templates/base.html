@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SmartStay – Smart Hostel Management System{% endblock %}</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/logo.jpg') }}">
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Application CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app-wrapper">
+
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar" id="appSidebar">
+      <!-- Sidebar Header / Brand -->
+      <div class="sidebar-header">
+        <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="SmartStay" class="brand-logo-img">
+        <div class="brand-title">
+          <span class="brand-name">SmartStay</span>
+          <span class="brand-badge">Hostel Portal</span>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <div class="sidebar-content">
+        <!-- Main Navigation Section -->
+        <div>
+          <div class="nav-section-title">Navigation</div>
+          <ul class="nav-menu">
+            {% if session.get('role') == 'student' %}
+              <li class="nav-item {% if request.path == '/student/dashboard' %}active{% endif %}">
+                <a href="{{ url_for('student_dashboard') }}">
+                  <i class="fa-solid fa-gauge-high"></i>
+                  <span>My Dashboard</span>
+                </a>
+              </li>
+            {% elif session.get('role') == 'warden' %}
+              <li class="nav-item {% if request.path == '/warden/dashboard' %}active{% endif %}">
+                <a href="{{ url_for('warden_dashboard') }}">
+                  <i class="fa-solid fa-gauge-high"></i>
+                  <span>Warden Console</span>
+                </a>
+              </li>
+            {% elif session.get('role') == 'admin' %}
+              <li class="nav-item {% if request.path == '/admin/dashboard' %}active{% endif %}">
+                <a href="{{ url_for('admin_dashboard') }}">
+                  <i class="fa-solid fa-chart-line"></i>
+                  <span>Admin Hub</span>
+                </a>
+              </li>
+            {% endif %}
+
+            <li class="nav-item {% if request.path == '/outpass' %}active{% endif %}">
+              <a href="{{ url_for('outpass') }}">
+                <i class="fa-solid fa-ticket"></i>
+                <span>Outpass Portal</span>
+              </a>
+            </li>
+
+            <li class="nav-item {% if request.path == '/food-menu' %}active{% endif %}">
+              <a href="{{ url_for('food_menu') }}">
+                <i class="fa-solid fa-utensils"></i>
+                <span>Food Menu</span>
+              </a>
+            </li>
+
+            <li class="nav-item {% if request.path == '/complaints' %}active{% endif %}">
+              <a href="{{ url_for('complaints') }}">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+                <span>Complaints</span>
+              </a>
+            </li>
+
+            <li class="nav-item {% if request.path == '/announcements' %}active{% endif %}">
+              <a href="{{ url_for('announcements') }}">
+                <i class="fa-solid fa-bullhorn"></i>
+                <span>Announcements</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Management Section (Admin & Warden) -->
+        {% if session.get('role') in ['warden', 'admin'] %}
+        <div>
+          <div class="nav-section-title">Management</div>
+          <ul class="nav-menu">
+            <li class="nav-item {% if request.path == '/rooms' %}active{% endif %}">
+              <a href="{{ url_for('rooms') }}">
+                <i class="fa-solid fa-building-user"></i>
+                <span>Rooms & Blocks</span>
+              </a>
+            </li>
+
+            {% if session.get('role') == 'admin' %}
+            <li class="nav-item {% if request.path == '/admin/users' %}active{% endif %}">
+              <a href="{{ url_for('admin_users') }}">
+                <i class="fa-solid fa-users-gear"></i>
+                <span>User Directory</span>
+              </a>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+        {% endif %}
+
+        <!-- Account Section -->
+        <div>
+          <div class="nav-section-title">Account</div>
+          <ul class="nav-menu">
+            <li class="nav-item {% if request.path == '/profile' %}active{% endif %}">
+              <a href="{{ url_for('profile') }}">
+                <i class="fa-solid fa-user-gear"></i>
+                <span>My Profile</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="{{ url_for('logout') }}" style="color: #fca5a5;">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                <span>Logout</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- User Mini Profile Footer -->
+      <div class="sidebar-footer">
+        <a href="{{ url_for('profile') }}" class="user-mini-card">
+          <div class="user-avatar-circle">
+            {{ current_user.full_name[:1] if current_user else 'U' }}
+          </div>
+          <div class="user-meta">
+            <div class="user-meta-name">{{ current_user.full_name if current_user else 'Guest' }}</div>
+            <div class="user-meta-role">
+              <i class="fa-solid fa-shield-halved"></i>
+              <span>{{ current_user.role|capitalize if current_user else 'Resident' }}</span>
+            </div>
+          </div>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Viewport -->
+    <main class="app-main">
+      <!-- Top Navigation Header -->
+      <header class="app-header">
+        <div class="header-left">
+          <button class="mobile-toggle-btn" id="mobileSidebarToggle" aria-label="Toggle navigation">
+            <i class="fa-solid fa-bars-staggered"></i>
+          </button>
+          <div class="page-breadcrumb">
+            <span>SmartStay</span>
+            <i class="fa-solid fa-chevron-right" style="font-size: 0.65rem; color: #cbd5e1;"></i>
+            <span class="breadcrumb-active">{% block page_title %}Dashboard{% endblock %}</span>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- Real-time Clock -->
+          <div class="system-clock">
+            <i class="fa-regular fa-clock"></i>
+            <span id="systemClockText"></span>
+          </div>
+
+          <!-- Notification Bell & Dropdown -->
+          <div style="position: relative;">
+            <button class="notification-bell-btn" id="notificationBellBtn" aria-label="Notifications">
+              <i class="fa-regular fa-bell"></i>
+              {% if unread_notifications_count > 0 %}
+                <span class="bell-badge" id="notifBadge">{{ unread_notifications_count }}</span>
+              {% endif %}
+            </button>
+
+            <!-- Dropdown Menu -->
+            <div class="notification-dropdown" id="notificationDropdown">
+              <div class="notif-header">
+                <h4>Notifications</h4>
+                <button class="mark-all-read-btn" id="markAllReadBtn">Mark all read</button>
+              </div>
+              <ul class="notif-list">
+                {% if recent_notifications %}
+                  {% for n in recent_notifications %}
+                    <li class="notif-item {% if not n.is_read %}unread{% endif %}" data-id="{{ n.id }}" data-link="{{ n.link or '#' }}">
+                      <div class="notif-icon {{ n.type }}">
+                        {% if n.type == 'outpass' %}
+                          <i class="fa-solid fa-ticket"></i>
+                        {% elif n.type == 'complaint' %}
+                          <i class="fa-solid fa-screwdriver-wrench"></i>
+                        {% elif n.type == 'announcement' %}
+                          <i class="fa-solid fa-bullhorn"></i>
+                        {% elif n.type == 'menu' %}
+                          <i class="fa-solid fa-utensils"></i>
+                        {% else %}
+                          <i class="fa-solid fa-bell"></i>
+                        {% endif %}
+                      </div>
+                      <div class="notif-content">
+                        <div class="notif-title">{{ n.title }}</div>
+                        <div class="notif-desc">{{ n.message }}</div>
+                        <div class="notif-time">{{ n.created_at }}</div>
+                      </div>
+                    </li>
+                  {% endfor %}
+                {% else %}
+                  <li class="notif-empty">
+                    <i class="fa-regular fa-bell-slash" style="font-size: 1.5rem; margin-bottom: 0.5rem; color: #cbd5e1; display: block;"></i>
+                    No notifications yet
+                  </li>
+                {% endif %}
+              </ul>
+            </div>
+          </div>
+
+          <!-- User Profile Chip -->
+          <a href="{{ url_for('profile') }}" class="header-profile-chip">
+            <div class="header-avatar">
+              {{ current_user.full_name[:1] if current_user else 'U' }}
+            </div>
+            <span class="header-user-name">{{ current_user.full_name.split(' ')[0] if current_user else 'User' }}</span>
+            <span class="header-role-tag {{ current_user.role if current_user else '' }}">
+              {{ current_user.role if current_user else '' }}
+            </span>
+          </a>
+        </div>
+      </header>
+
+      <!-- Flash Messages / Toast Alerts -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div style="padding: 1rem 2rem 0;">
+            {% for category, message in messages %}
+              <div class="toast {{ category }}" style="position: static; margin-bottom: 0.5rem; width: 100%; max-width: 100%;">
+                <i class="fa-solid fa-circle-info"></i>
+                <div style="flex: 1;">{{ message }}</div>
+                <button style="background: none; border: none; cursor: pointer;" onclick="this.parentElement.remove()">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <!-- Page Specific Content -->
+      <div class="page-container">
+        {% block content %}{% endblock %}
+      </div>
+
+      <!-- App Footer -->
+      <footer class="app-footer">
+        <div>
+          <strong>SmartStay</strong> &copy; 2026. All rights reserved. Designed for College Hostel Administration.
+        </div>
+        <div>
+          <span>Version 2.4.0 • Built with Flask, SQLite & Modern Vanilla CSS</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- Global Modals: Digital Pass, Rejection, Resolution, etc.       -->
+  <!-- ============================================================= -->
+
+  <!-- 1. Digital Outpass Pass Modal (with QR code) -->
+  <div class="modal-backdrop" id="digitalPassModal">
+    <div class="modal-container" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-id-card-clip" style="color: var(--purple-600); margin-right: 0.5rem;"></i> SmartStay Digital Gate Pass</h3>
+        <button class="modal-close-btn" data-close-modal="digitalPassModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="digital-pass-card" id="printablePassArea">
+          <div class="pass-stamp" id="passStamp">APPROVED</div>
+
+          <div class="pass-header">
+            <div class="pass-qr-box">
+              <canvas id="passQrCanvas" width="80" height="80"></canvas>
+            </div>
+            <div>
+              <h3 id="passStudentName" style="font-size: 1.15rem; font-weight: 800; color: var(--navy-900);">Student Name</h3>
+              <p id="passRollNo" style="font-size: 0.85rem; font-weight: 700; color: var(--purple-600);">Roll No</p>
+              <p id="passRoomBlock" style="font-size: 0.78rem; color: var(--text-muted);">Hostel Block & Room</p>
+            </div>
+          </div>
+
+          <div class="pass-meta-grid">
+            <div class="pass-field">
+              <span class="pass-field-label">Outpass ID</span>
+              <span class="pass-field-value" id="passCodeDisplay" style="font-family: monospace; color: var(--purple-700);">SS-OP-2026</span>
+            </div>
+            <div class="pass-field">
+              <span class="pass-field-label">Destination</span>
+              <span class="pass-field-value" id="passDestination">-</span>
+            </div>
+            <div class="pass-field">
+              <span class="pass-field-label">Departure</span>
+              <span class="pass-field-value" id="passDeparture" style="font-size: 0.85rem;">-</span>
+            </div>
+            <div class="pass-field">
+              <span class="pass-field-label">Scheduled Return</span>
+              <span class="pass-field-value" id="passReturn" style="font-size: 0.85rem;">-</span>
+            </div>
+          </div>
+
+          <div style="background: rgba(255, 255, 255, 0.8); border: 1px solid #ede9fe; padding: 0.75rem; border-radius: 8px; margin-bottom: 0.75rem;">
+            <div class="pass-field-label">Reason for Leaving</div>
+            <div id="passReason" style="font-size: 0.85rem; color: var(--navy-800); margin-top: 0.2rem;">-</div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted); border-top: 1px dashed #c4b5fd; padding-top: 0.75rem;">
+            <div>Authorized by: <strong id="passApprovedBy" style="color: var(--navy-900);">Warden Office</strong></div>
+            <div style="display: flex; align-items: center; gap: 0.35rem; color: var(--emerald-600); font-weight: 700;">
+              <i class="fa-solid fa-circle-check"></i> Security Verified
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="digitalPassModal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="printDigitalPass()">
+          <i class="fa-solid fa-print"></i> Print Gate Pass
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Reject Outpass Modal -->
+  <div class="modal-backdrop" id="rejectOutpassModal">
+    <div class="modal-container" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-ban" style="color: var(--rose-600); margin-right: 0.5rem;"></i> Reject Outpass Application</h3>
+        <button class="modal-close-btn" data-close-modal="rejectOutpassModal">&times;</button>
+      </div>
+      <form id="rejectOutpassForm">
+        <input type="hidden" id="rejectOutpassId">
+        <div class="modal-body">
+          <p style="font-size: 0.9rem; color: var(--navy-800); margin-bottom: 1rem;">
+            You are rejecting outpass <strong id="rejectPassCode" style="color: var(--rose-600);"></strong>. Please provide a clear rejection reason for the student.
+          </p>
+          <div class="form-group">
+            <label class="form-label">Rejection Reason *</label>
+            <textarea id="rejectRemarks" class="form-control" placeholder="E.g., Lack of guardian prior consent, attendance below threshold, late night curfew violation..." required rows="4"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="rejectOutpassModal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Confirm Rejection</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. Resolve / Update Complaint Modal -->
+  <div class="modal-backdrop" id="resolveComplaintModal">
+    <div class="modal-container" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-wrench" style="color: var(--purple-600); margin-right: 0.5rem;"></i> Update Complaint Status</h3>
+        <button class="modal-close-btn" data-close-modal="resolveComplaintModal">&times;</button>
+      </div>
+      <form id="resolveComplaintForm">
+        <input type="hidden" id="resolveComplaintId">
+        <div class="modal-body">
+          <p style="font-size: 0.9rem; color: var(--navy-800); margin-bottom: 1rem;">
+            Update ticket <strong id="resolveTicketNumber" style="color: var(--purple-700);"></strong>.
+          </p>
+          <div class="form-group">
+            <label class="form-label">Status *</label>
+            <select name="status" id="resolveStatusSelect" class="form-control" required>
+              <option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Resolution / Action Notes</label>
+            <textarea name="resolution_notes" class="form-control" placeholder="Describe steps taken or technician assignment notes..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="resolveComplaintModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Application JS -->
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

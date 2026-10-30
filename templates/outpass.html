@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Outpass Management – SmartStay{% endblock %}
+{% block page_title %}Digital Outpass Management{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header-row">
+  <div class="page-title-group">
+    <h1>Digital Outpass Portal</h1>
+    <p class="page-subtitle">
+      {% if session.get('role') == 'student' %}
+        Apply for campus leave and present your verified digital pass at hostel security.
+      {% else %}
+        Review, verify, and authorize student campus leaves and curfew extensions.
+      {% endif %}
+    </p>
+  </div>
+  {% if session.get('role') == 'student' %}
+    <button class="btn btn-primary" onclick="openModal('applyOutpassModal')">
+      <i class="fa-solid fa-plus"></i> Apply for Outpass
+    </button>
+  {% endif %}
+</div>
+
+<!-- Quick Stat Cards for Warden/Admin -->
+{% if session.get('role') in ['warden', 'admin'] and stats %}
+<div class="stats-grid" style="margin-bottom: 1.5rem;">
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Pending Approval</span>
+      <div class="stat-value" style="color: var(--amber-600);">{{ stats.pending }}</div>
+    </div>
+    <div class="stat-icon-wrapper amber"><i class="fa-solid fa-hourglass-half"></i></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Currently Out (Approved)</span>
+      <div class="stat-value" style="color: var(--emerald-600);">{{ stats.approved }}</div>
+    </div>
+    <div class="stat-icon-wrapper emerald"><i class="fa-solid fa-person-walking-arrow-right"></i></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Returned & Completed</span>
+      <div class="stat-value" style="color: var(--sky-600);">{{ stats.completed }}</div>
+    </div>
+    <div class="stat-icon-wrapper sky"><i class="fa-solid fa-circle-check"></i></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Rejected Requests</span>
+      <div class="stat-value" style="color: var(--rose-600);">{{ stats.rejected }}</div>
+    </div>
+    <div class="stat-icon-wrapper rose"><i class="fa-solid fa-ban"></i></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Filters & Search Toolbar -->
+<div class="card" style="margin-bottom: 1.25rem;">
+  <div class="card-body" style="padding: 1rem 1.5rem;">
+    <div class="filter-bar" style="margin-bottom: 0;">
+      <!-- Status Tabs -->
+      <div class="filter-tabs">
+        <a href="{{ url_for('outpass', status='all', search=search_query) }}" class="filter-tab {% if status_filter == 'all' %}active{% endif %}">
+          All Passes
+        </a>
+        <a href="{{ url_for('outpass', status='Pending', search=search_query) }}" class="filter-tab {% if status_filter == 'Pending' %}active{% endif %}">
+          Pending
+        </a>
+        <a href="{{ url_for('outpass', status='Approved', search=search_query) }}" class="filter-tab {% if status_filter == 'Approved' %}active{% endif %}">
+          Approved
+        </a>
+        <a href="{{ url_for('outpass', status='Completed', search=search_query) }}" class="filter-tab {% if status_filter == 'Completed' %}active{% endif %}">
+          Completed
+        </a>
+        <a href="{{ url_for('outpass', status='Rejected', search=search_query) }}" class="filter-tab {% if status_filter == 'Rejected' %}active{% endif %}">
+          Rejected
+        </a>
+      </div>
+
+      <!-- Live Search Box -->
+      <div class="search-input-wrapper">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" class="form-control table-search-input" data-table="outpassesTable" placeholder="Search destination, roll no, name...">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Outpasses Data Table Card -->
+<div class="card">
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="data-table" id="outpassesTable">
+        <thead>
+          <tr>
+            <th>Pass Code</th>
+            {% if session.get('role') != 'student' %}
+              <th>Student Details</th>
+            {% endif %}
+            <th>Destination</th>
+            <th>Departure Schedule</th>
+            <th>Return Schedule</th>
+            <th>Status</th>
+            <th>Warden Action / Remarks</th>
+            <th style="text-align: right;">Pass</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if outpasses %}
+            {% for o in outpasses %}
+              <tr>
+                <td>
+                  <strong style="font-family: monospace; color: var(--purple-700); font-size: 0.92rem;">{{ o.pass_code }}</strong>
+                  <div style="font-size: 0.72rem; color: var(--text-light);">{{ o.applied_at[:10] }}</div>
+                </td>
+                
+                {% if session.get('role') != 'student' %}
+                  <td>
+                    <div style="font-weight: 700; color: var(--navy-900);">{{ o.student_name }}</div>
+                    <small style="color: var(--purple-600); font-weight: 600;">{{ o.roll_no }}</small> • 
+                    <small style="color: var(--text-muted);">{{ o.block_name }} ({{ o.room_number }})</small>
+                    {% if o.parent_contact %}
+                      <div style="font-size: 0.72rem; color: var(--navy-600); margin-top: 0.15rem;">
+                        <i class="fa-solid fa-phone" style="font-size: 0.65rem;"></i> Parent: {{ o.parent_contact }}
+                      </div>
+                    {% endif %}
+                  </td>
+                {% endif %}
+
+                <td>
+                  <div style="font-weight: 600; color: var(--navy-900);">{{ o.destination }}</div>
+                  <small style="color: var(--text-muted);" title="{{ o.reason }}">{{ o.reason[:35] }}{% if o.reason|length > 35 %}...{% endif %}</small>
+                </td>
+
+                <td>
+                  <div style="font-size: 0.84rem; font-weight: 600;">{{ o.departure_date }}</div>
+                  <small style="color: var(--text-muted);"><i class="fa-regular fa-clock"></i> {{ o.departure_time }}</small>
+                </td>
+
+                <td>
+                  <div style="font-size: 0.84rem; font-weight: 600;">{{ o.return_date }}</div>
+                  <small style="color: var(--text-muted);"><i class="fa-regular fa-clock"></i> {{ o.return_time }}</small>
+                </td>
+
+                <td>
+                  <span class="badge badge-{{ o.status|lower }}">{{ o.status }}</span>
+                </td>
+
+                <td>
+                  {% if session.get('role') in ['warden', 'admin'] and o.status == 'Pending' %}
+                    <div style="display: flex; gap: 0.4rem;">
+                      <button class="btn btn-success btn-sm" onclick="handleOutpassAction({{ o.id }}, 'approve')" title="Approve Leave">
+                        <i class="fa-solid fa-check"></i> Approve
+                      </button>
+                      <button class="btn btn-danger btn-sm" onclick="openRejectOutpassModal({{ o.id }}, '{{ o.pass_code }}')" title="Reject Leave">
+                        <i class="fa-solid fa-xmark"></i> Reject
+                      </button>
+                    </div>
+                  {% elif session.get('role') in ['warden', 'admin'] and o.status == 'Approved' %}
+                    <button class="btn btn-primary btn-sm" onclick="markOutpassCompleted({{ o.id }})">
+                      <i class="fa-solid fa-door-open"></i> Log Return
+                    </button>
+                  {% else %}
+                    <small style="color: var(--navy-700);">
+                      {{ o.warden_remarks or 'No remarks recorded.' }}
+                    </small>
+                  {% endif %}
+                </td>
+
+                <td style="text-align: right;">
+                  {% if o.status in ['Approved', 'Completed'] %}
+                    <button class="btn btn-secondary btn-sm btn-view-digital-pass" data-id="{{ o.id }}" title="View Official Gate Pass">
+                      <i class="fa-solid fa-qrcode"></i> View Pass
+                    </button>
+                  {% else %}
+                    <span style="font-size: 0.78rem; color: var(--text-muted);">{{ o.status }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                <i class="fa-solid fa-ticket-simple" style="font-size: 2.5rem; color: #cbd5e1; margin-bottom: 0.75rem; display: block;"></i>
+                No outpass applications match the selected filter.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Apply Outpass Modal (For Student) -->
+<div class="modal-backdrop" id="applyOutpassModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-ticket" style="color: var(--purple-600); margin-right: 0.5rem;"></i> Apply for Hostel Outpass</h3>
+      <button class="modal-close-btn" data-close-modal="applyOutpassModal">&times;</button>
+    </div>
+    <form id="applyOutpassForm">
+      <div class="modal-body">
+        <div style="background: var(--bg-subtle); padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; font-size: 0.82rem; color: var(--navy-700);">
+          <i class="fa-solid fa-circle-info" style="color: var(--purple-600);"></i>
+          Ensure all dates and emergency contacts are accurate. Unauthorized departures violate hostel regulations.
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Departure Date *</label>
+            <input type="date" name="departure_date" class="form-control" required value="{{ now.strftime('%Y-%m-%d') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Departure Time *</label>
+            <input type="time" name="departure_time" class="form-control" required value="17:00">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Scheduled Return Date *</label>
+            <input type="date" name="return_date" class="form-control" required value="{{ now.strftime('%Y-%m-%d') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Return Curfew Time *</label>
+            <input type="time" name="return_time" class="form-control" required value="20:30">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Destination Address / City *</label>
+          <input type="text" name="destination" class="form-control" placeholder="e.g. Pune (Home) or City Hospital" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Reason for Leaving Campus *</label>
+          <textarea name="reason" class="form-control" placeholder="Provide reason for hostel outpass..." required rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Parent / Guardian Contact Phone</label>
+          <input type="tel" name="parent_contact" class="form-control" placeholder="+91 98111 22334" value="{{ student.guardian_phone if student else '' }}">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="applyOutpassModal">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Submit Application</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

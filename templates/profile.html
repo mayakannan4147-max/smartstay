@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile – SmartStay{% endblock %}
+{% block page_title %}Resident Profile & Security{% endblock %}
+
+{% block content %}
+<div class="page-header-row">
+  <div class="page-title-group">
+    <h1>Account Profile & Security</h1>
+    <p class="page-subtitle">Manage personal contact details, guardian information, and security credentials.</p>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 1.75rem;">
+
+  <!-- Left Card: Profile Summary -->
+  <div>
+    <div class="card" style="text-align: center;">
+      <div class="card-body" style="padding: 2.5rem 1.5rem;">
+        <div style="width: 84px; height: 84px; border-radius: 50%; background: linear-gradient(135deg, var(--purple-600), var(--indigo-600)); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 800; color: #fff; margin: 0 auto 1.25rem; box-shadow: var(--shadow-purple);">
+          {{ user.full_name[:1] }}
+        </div>
+        <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--navy-900);">{{ user.full_name }}</h2>
+        <div style="margin-top: 0.25rem;">
+          <span class="badge badge-low" style="text-transform: uppercase;">{{ user.role }}</span>
+        </div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+          <i class="fa-regular fa-envelope"></i> {{ user.email }}
+        </div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+          <i class="fa-solid fa-phone"></i> {{ user.phone or 'Not provided' }}
+        </div>
+
+        {% if student %}
+          <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); text-align: left; font-size: 0.84rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            <div><strong>Roll Number:</strong> <span style="color: var(--purple-700); font-weight: 700;">{{ student.roll_no }}</span></div>
+            <div><strong>Department:</strong> {{ student.department }}</div>
+            <div><strong>Academic Year:</strong> {{ student.year }}</div>
+            <div><strong>Hostel Wing:</strong> {{ student.block_name or 'Unassigned' }}</div>
+            <div><strong>Room Number:</strong> <span class="badge badge-approved">Room {{ student.room_number or 'Pending' }}</span></div>
+          </div>
+        {% elif warden %}
+          <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); text-align: left; font-size: 0.84rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            <div><strong>Employee ID:</strong> <span style="color: var(--purple-700); font-weight: 700;">{{ warden.employee_id }}</span></div>
+            <div><strong>Designation:</strong> {{ warden.designation }}</div>
+            <div><strong>Assigned Block:</strong> {{ warden.block_name or 'All Blocks' }}</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Edit Forms (Profile Details & Password Change) -->
+  <div>
+    <!-- Form 1: Update Info -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <i class="fa-solid fa-pen-to-square"></i>
+          <h3>Update Personal Information</h3>
+        </div>
+      </div>
+      <div class="card-body">
+        <form action="{{ url_for('profile') }}" method="POST">
+          <input type="hidden" name="action" value="update_info">
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input type="text" name="full_name" class="form-control" value="{{ user.full_name }}" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Phone Number</label>
+              <input type="tel" name="phone" class="form-control" value="{{ user.phone or '' }}" placeholder="+91 98765 43210">
+            </div>
+          </div>
+
+          {% if student %}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label class="form-label">Guardian / Parent Name</label>
+                <input type="text" name="guardian_name" class="form-control" value="{{ student.guardian_name or '' }}">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Guardian Emergency Phone</label>
+                <input type="tel" name="guardian_phone" class="form-control" value="{{ student.guardian_phone or '' }}">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label class="form-label">Department</label>
+                <input type="text" name="department" class="form-control" value="{{ student.department or '' }}">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Year of Study</label>
+                <input type="text" name="year" class="form-control" value="{{ student.year or '' }}">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Permanent Home Address</label>
+              <textarea name="address" class="form-control" rows="2">{{ student.address or '' }}</textarea>
+            </div>
+          {% endif %}
+
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-floppy-disk"></i> Save Profile Details
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Form 2: Change Password -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <i class="fa-solid fa-lock"></i>
+          <h3>Change Account Password</h3>
+        </div>
+      </div>
+      <div class="card-body">
+        <form action="{{ url_for('profile') }}" method="POST">
+          <input type="hidden" name="action" value="change_password">
+
+          <div class="form-group">
+            <label class="form-label">Current Password *</label>
+            <input type="password" name="current_password" class="form-control" placeholder="••••••••" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label">New Password * (Min 6 chars)</label>
+              <input type="password" name="new_password" class="form-control" placeholder="••••••••" minlength="6" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm New Password *</label>
+              <input type="password" name="confirm_password" class="form-control" placeholder="••••••••" minlength="6" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-secondary">
+            <i class="fa-solid fa-key"></i> Update Password
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard – SmartStay{% endblock %}
+{% block page_title %}Hostel Administration Hub{% endblock %}
+
+{% block content %}
+<!-- Page Header Welcome -->
+<div class="page-header-row">
+  <div class="page-title-group">
+    <h1>SmartStay Central Administration</h1>
+    <p class="page-subtitle">Chief Warden & System Administrator Oversight Portal</p>
+  </div>
+  <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+    <button class="btn btn-primary" onclick="openModal('addWardenModal')">
+      <i class="fa-solid fa-user-shield"></i> Add Warden
+    </button>
+    <button class="btn btn-secondary" onclick="openModal('addRoomModal')">
+      <i class="fa-solid fa-bed"></i> Add Room
+    </button>
+    <a href="{{ url_for('rooms') }}" class="btn btn-secondary">
+      <i class="fa-solid fa-building-user"></i> Room Allocations
+    </a>
+  </div>
+</div>
+
+<!-- Key System Metrics -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Total Residents</span>
+      <div class="stat-value" style="color: var(--purple-700);">{{ total_students }}</div>
+      <span class="stat-hint"><i class="fa-solid fa-user-check"></i> {{ allocated_students }} Allocated ({{ unallocated_students }} unassigned)</span>
+    </div>
+    <div class="stat-icon-wrapper purple">
+      <i class="fa-solid fa-graduation-cap"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Hostel Blocks & Rooms</span>
+      <div class="stat-value">{{ total_blocks }} / {{ total_rooms }}</div>
+      <span class="stat-hint"><i class="fa-solid fa-hotel"></i> Total capacity: {{ total_capacity }} beds</span>
+    </div>
+    <div class="stat-icon-wrapper indigo">
+      <i class="fa-solid fa-building"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Active Wardens</span>
+      <div class="stat-value" style="color: var(--amber-600);">{{ total_wardens }}</div>
+      <span class="stat-hint"><i class="fa-solid fa-shield-halved"></i> Assigned across wings</span>
+    </div>
+    <div class="stat-icon-wrapper amber">
+      <i class="fa-solid fa-user-shield"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Grievance Redressal</span>
+      <div class="stat-value" style="color: var(--emerald-600);">
+        {% if total_complaints > 0 %}{{ ((resolved_complaints / total_complaints) * 100)|round(0)|int }}%{% else %}100%{% endif %}
+      </div>
+      <span class="stat-hint"><i class="fa-solid fa-check-double"></i> {{ resolved_complaints }}/{{ total_complaints }} resolved</span>
+    </div>
+    <div class="stat-icon-wrapper emerald">
+      <i class="fa-solid fa-circle-check"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Two-Column Master Layout -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.75rem;">
+
+  <!-- Left Column -->
+  <div>
+    <!-- Hostel Blocks Summary Table -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <i class="fa-solid fa-cubes-stacked"></i>
+          <h3>Hostel Blocks & Occupancy Breakdown</h3>
+        </div>
+        <a href="{{ url_for('rooms') }}" class="btn btn-secondary btn-sm">Manage All Rooms</a>
+      </div>
+      <div class="card-body" style="padding: 0;">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Block Name</th>
+                <th>Type</th>
+                <th>Floors</th>
+                <th>Rooms</th>
+                <th>Capacity / Occupied</th>
+                <th>Occupancy %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for b in blocks_summary %}
+                {% set pct = ((b.current_occupancy / b.total_bed_capacity) * 100)|round(1) if b.total_bed_capacity > 0 else 0 %}
+                <tr>
+                  <td><strong style="color: var(--navy-900);">{{ b.name }}</strong></td>
+                  <td><span class="badge badge-low">{{ b.gender_type }}</span></td>
+                  <td>{{ b.total_floors }} Floors</td>
+                  <td>{{ b.room_count }} Rooms</td>
+                  <td><strong>{{ b.current_occupancy }}</strong> / {{ b.total_bed_capacity }} Beds</td>
+                  <td>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <div style="flex: 1; height: 8px; background: #e2e8f0; border-radius: 9999px; overflow: hidden; min-width: 60px;">
+                        <div style="width: {{ pct }}%; height: 100%; background: {% if pct > 85 %}var(--rose-600){% elif pct > 50 %}var(--purple-600){% else %}var(--emerald-500){% endif %};"></div>
+                      </div>
+                      <span style="font-size: 0.75rem; font-weight: 700;">{{ pct }}%</span>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart.js Block Occupancy Bar Chart -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <i class="fa-solid fa-chart-column"></i>
+          <h3>Hostel Block Bed Allocation Analytics</h3>
+        </div>
+      </div>
+      <div class="card-body" style="height: 260px; position: relative;">
+        <canvas id="blockOccupancyChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Recent Student Registrations Table -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <i class="fa-solid fa-users"></i>
+          <h3>Recent Student Registrations</h3>
+        </div>
+        <a href="{{ url_for('admin_users') }}" class="btn btn-secondary btn-sm">Full Student Directory</a>
+      </div>
+      <div class="card-body" style="padding: 0;">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Roll Number</th>
+                <th>Department</th>
+                <th>Hostel Room</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in recent_students %}
+                <tr>
+                  <td>
+                    <div style="font-weight: 700; color: var(--navy-900);">{{ s.full_name }}</div>
+                    <small style="color: var(--text-muted);">{{ s.email }}</small>
+                  </td>
+                  <td><strong style="color: var(--purple-700);">{{ s.roll_no }}</strong></td>
+                  <td>{{ s.department }} ({{ s.year }})</td>
+                  <td>
+                    {% if s.room_number %}
+                      <span class="badge badge-approved">{{ s.block_name }} • {{ s.room_number }}</span>
+                    {% else %}
+                      <span class="badge badge-pending">Unallocated</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if not s.room_number %}
+                      <a href="{{ url_for('rooms') }}" class="btn btn-primary btn-sm">Allocate</a>
+                    {% else %}
+                      <span style="font-size: 0.78rem; color: var(--emerald-600); font-weight: 600;"><i class="fa-solid fa-check"></i> Assigned</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right Column -->
+  <div>
+    <!-- Quick Administrative Controls -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <i class="fa-solid fa-sliders"></i>
+          <h3>Admin Controls</h3>
+        </div>
+      </div>
+      <div class="card-body" style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <button class="btn btn-primary" onclick="openModal('addWardenModal')" style="justify-content: flex-start;">
+          <i class="fa-solid fa-user-shield" style="width: 20px;"></i> Add New Hostel Warden
+        </button>
+        <button class="btn btn-secondary" onclick="openModal('addRoomModal')" style="justify-content: flex-start;">
+          <i class="fa-solid fa-plus" style="color: var(--purple-600); width: 20px;"></i> Add New Hostel Room
+        </button>
+        <a href="{{ url_for('admin_users') }}" class="btn btn-secondary" style="justify-content: flex-start;">
+          <i class="fa-solid fa-users-gear" style="color: var(--indigo-600); width: 20px;"></i> Manage User Accounts
+        </a>
+        <a href="{{ url_for('food_menu') }}" class="btn btn-secondary" style="justify-content: flex-start;">
+          <i class="fa-solid fa-utensils" style="color: var(--amber-600); width: 20px;"></i> Configure Weekly Food Menu
+        </a>
+        <a href="{{ url_for('outpass') }}" class="btn btn-secondary" style="justify-content: flex-start;">
+          <i class="fa-solid fa-ticket" style="color: var(--emerald-600); width: 20px;"></i> All Outpass Logs ({{ total_outpasses }})
+        </a>
+      </div>
+    </div>
+
+    <!-- Wardens Roster -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <i class="fa-solid fa-shield-halved"></i>
+          <h3>Wardens Roster</h3>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="openModal('addWardenModal')">Add</button>
+      </div>
+      <div class="card-body">
+        {% if wardens_list %}
+          <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+            {% for w in wardens_list %}
+              <div style="padding: 0.85rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); display: flex; align-items: flex-start; justify-content: space-between;">
+                <div>
+                  <div style="font-weight: 700; color: var(--navy-900); font-size: 0.92rem;">{{ w.full_name }}</div>
+                  <div style="font-size: 0.75rem; color: var(--purple-700); font-weight: 600;">{{ w.employee_id }} • {{ w.designation }}</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem;">
+                    <i class="fa-solid fa-hotel"></i> {{ w.block_name or 'Unassigned' }}
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--navy-600); margin-top: 0.15rem;">
+                    <i class="fa-solid fa-phone"></i> {{ w.phone or 'N/A' }}
+                  </div>
+                </div>
+                <span class="badge badge-low">Active</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="font-size: 0.85rem; color: var(--text-muted);">No wardens registered.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Add Warden Modal -->
+<div class="modal-backdrop" id="addWardenModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-user-shield" style="color: var(--purple-600); margin-right: 0.5rem;"></i> Register New Warden</h3>
+      <button class="modal-close-btn" data-close-modal="addWardenModal">&times;</button>
+    </div>
+    <form id="addWardenForm">
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input type="text" name="full_name" class="form-control" placeholder="e.g. Mr. Anil Verma" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Employee ID *</label>
+            <input type="text" name="employee_id" class="form-control" placeholder="e.g. EMP-WRD-003" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Username *</label>
+            <input type="text" name="username" class="form-control" placeholder="e.g. anil_warden" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address *</label>
+            <input type="email" name="email" class="form-control" placeholder="anil.verma@smartstay.com" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Initial Password</label>
+            <input type="password" name="password" class="form-control" value="warden123" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contact Phone</label>
+            <input type="tel" name="phone" class="form-control" placeholder="+91 98765 11223">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Assigned Hostel Block</label>
+            <select name="assigned_block_id" class="form-control">
+              <option value="">-- Unassigned / Roaming --</option>
+              {% for b in blocks_summary %}
+                <option value="{{ b.id }}">{{ b.name }} ({{ b.gender_type }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Designation</label>
+            <input type="text" name="designation" class="form-control" value="Hostel Warden">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="addWardenModal">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Register Warden</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add Room Modal -->
+<div class="modal-backdrop" id="addRoomModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-bed" style="color: var(--purple-600); margin-right: 0.5rem;"></i> Add Hostel Room</h3>
+      <button class="modal-close-btn" data-close-modal="addRoomModal">&times;</button>
+    </div>
+    <form id="addRoomForm">
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Hostel Block *</label>
+            <select name="block_id" class="form-control" required>
+              {% for b in blocks_summary %}
+                <option value="{{ b.id }}">{{ b.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Room Number *</label>
+            <input type="text" name="room_number" class="form-control" placeholder="e.g. A-304" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Floor</label>
+            <input type="number" name="floor" class="form-control" value="1" min="1" max="10">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Capacity (Beds)</label>
+            <input type="number" name="capacity" class="form-control" value="2" min="1" max="6">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Room Type</label>
+            <select name="type" class="form-control">
+              <option value="Double AC">Double AC</option>
+              <option value="Double Non-AC">Double Non-AC</option>
+              <option value="Single AC">Single AC</option>
+              <option value="Triple Sharing">Triple Sharing</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="addRoomModal">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Create Room</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

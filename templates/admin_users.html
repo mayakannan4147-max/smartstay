@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}User Directory – SmartStay Admin{% endblock %}
+{% block page_title %}Hostel Residents & Staff Directory{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header-row">
+  <div class="page-title-group">
+    <h1>User & Staff Accounts Directory</h1>
+    <p class="page-subtitle">Manage student residents, wardens, and role-based access permissions.</p>
+  </div>
+  <button class="btn btn-primary" onclick="openModal('addWardenModal')">
+    <i class="fa-solid fa-user-shield"></i> Add Hostel Warden
+  </button>
+</div>
+
+<!-- Wardens Section -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-title">
+      <i class="fa-solid fa-user-shield"></i>
+      <h3>Hostel Wardens & Supervisors ({{ wardens|length }})</h3>
+    </div>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Employee ID</th>
+            <th>Warden Name</th>
+            <th>Email & Username</th>
+            <th>Phone</th>
+            <th>Assigned Hostel Block</th>
+            <th>Designation</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for w in wardens %}
+            <tr>
+              <td><strong style="color: var(--purple-700);">{{ w.employee_id }}</strong></td>
+              <td><strong>{{ w.full_name }}</strong></td>
+              <td>
+                <div>{{ w.email }}</div>
+                <small style="color: var(--text-muted);">@{{ w.username }}</small>
+              </td>
+              <td>{{ w.phone or 'N/A' }}</td>
+              <td>
+                <span class="badge badge-low">{{ w.block_name or 'All Wings' }}</span>
+              </td>
+              <td>{{ w.designation }}</td>
+              <td style="text-align: right;">
+                <button class="btn btn-secondary btn-sm" style="color: var(--rose-600);" onclick="deleteUser({{ w.user_id }}, '{{ w.full_name|replace("'", "\\'") }}')">
+                  <i class="fa-solid fa-trash-can"></i> Remove
+                </button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Student Residents Section -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-title">
+      <i class="fa-solid fa-graduation-cap"></i>
+      <h3>Registered Student Residents ({{ students|length }})</h3>
+    </div>
+    <div class="search-input-wrapper">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" class="form-control table-search-input" data-table="studentsTable" placeholder="Search residents...">
+    </div>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="data-table" id="studentsTable">
+        <thead>
+          <tr>
+            <th>Roll No</th>
+            <th>Resident Name</th>
+            <th>Academic Dept</th>
+            <th>Email & Phone</th>
+            <th>Hostel Room</th>
+            <th>Guardian Details</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in students %}
+            <tr>
+              <td><strong style="color: var(--purple-700);">{{ s.roll_no }}</strong></td>
+              <td>
+                <div style="font-weight: 700; color: var(--navy-900);">{{ s.full_name }}</div>
+                <small style="color: var(--text-muted);">@{{ s.username }}</small>
+              </td>
+              <td>
+                <div>{{ s.department }}</div>
+                <small style="color: var(--text-muted);">{{ s.year }} • {{ s.gender }}</small>
+              </td>
+              <td>
+                <div>{{ s.email }}</div>
+                <small style="color: var(--navy-700);"><i class="fa-solid fa-phone"></i> {{ s.phone }}</small>
+              </td>
+              <td>
+                {% if s.room_number %}
+                  <span class="badge badge-approved">{{ s.block_name }} • {{ s.room_number }}</span>
+                {% else %}
+                  <span class="badge badge-pending">Unallocated</span>
+                {% endif %}
+              </td>
+              <td>
+                <div>{{ s.guardian_name or 'N/A' }}</div>
+                <small style="color: var(--text-muted);">{{ s.guardian_phone or '' }}</small>
+              </td>
+              <td style="text-align: right;">
+                <button class="btn btn-secondary btn-sm" style="color: var(--rose-600);" onclick="deleteUser({{ s.user_id }}, '{{ s.full_name|replace("'", "\\'") }}')">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Warden Modal -->
+<div class="modal-backdrop" id="addWardenModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-user-shield" style="color: var(--purple-600); margin-right: 0.5rem;"></i> Register New Warden</h3>
+      <button class="modal-close-btn" data-close-modal="addWardenModal">&times;</button>
+    </div>
+    <form id="addWardenForm">
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input type="text" name="full_name" class="form-control" placeholder="e.g. Mr. Anil Verma" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Employee ID *</label>
+            <input type="text" name="employee_id" class="form-control" placeholder="e.g. EMP-WRD-004" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Username *</label>
+            <input type="text" name="username" class="form-control" placeholder="e.g. anil_warden" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address *</label>
+            <input type="email" name="email" class="form-control" placeholder="anil.verma@smartstay.com" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Initial Password</label>
+            <input type="password" name="password" class="form-control" value="warden123" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contact Phone</label>
+            <input type="tel" name="phone" class="form-control" placeholder="+91 98765 11223">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Assigned Hostel Block</label>
+            <select name="assigned_block_id" class="form-control">
+              <option value="">-- Unassigned / Roaming --</option>
+              {% for b in blocks %}
+                <option value="{{ b.id }}">{{ b.name }} ({{ b.gender_type }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Designation</label>
+            <input type="text" name="designation" class="form-control" value="Hostel Warden">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="addWardenModal">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Register Warden</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

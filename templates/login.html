@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login – SmartStay Hostel Management</title>
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/logo.jpg') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="background: #ffffff;">
+  <div class="auth-page">
+    <!-- Left form side -->
+    <div class="auth-split-left">
+      <div class="auth-card-box">
+        <div class="auth-brand">
+          <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="SmartStay Logo" class="brand-logo-img" style="width: 48px; height: 48px;">
+          <div>
+            <h2 style="font-size: 1.45rem; font-weight: 800; color: var(--navy-900); line-height: 1.1;">SmartStay</h2>
+            <span style="font-size: 0.72rem; font-weight: 600; color: var(--purple-600); text-transform: uppercase; letter-spacing: 0.05em;">Smart Hostel System</span>
+          </div>
+        </div>
+
+        <h1 class="auth-title">Welcome Back</h1>
+        <p class="auth-desc">Sign in to your account to manage outpasses, food schedules, and hostel services.</p>
+
+        <!-- Flash alerts -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="toast {{ category }}" style="position: static; margin-bottom: 1.25rem; width: 100%;">
+                <i class="fa-solid fa-circle-info"></i>
+                <div style="flex: 1; font-size: 0.85rem;">{{ message }}</div>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- Quick 1-Click Demo Accounts -->
+        <div style="margin-bottom: 1.25rem;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+            <i class="fa-solid fa-bolt" style="color: var(--amber-500);"></i> Fast Demo Login (Click to populate):
+          </div>
+          <div class="demo-account-pills">
+            <button type="button" class="demo-pill" onclick="quickFill('student', 'student123', 'student')">
+              <i class="fa-solid fa-graduation-cap" style="color: var(--indigo-600);"></i> Student
+            </button>
+            <button type="button" class="demo-pill" onclick="quickFill('warden', 'warden123', 'warden')">
+              <i class="fa-solid fa-user-shield" style="color: var(--amber-600);"></i> Warden
+            </button>
+            <button type="button" class="demo-pill" onclick="quickFill('admin', 'admin123', 'admin')">
+              <i class="fa-solid fa-crown" style="color: var(--rose-600);"></i> Admin
+            </button>
+          </div>
+        </div>
+
+        <form action="{{ url_for('login') }}" method="POST">
+          <div class="form-group">
+            <label class="form-label" for="loginIdentifier">Username or Email *</label>
+            <input type="text" id="loginIdentifier" name="identifier" class="form-control" placeholder="e.g. student or student@smartstay.com" required autofocus>
+          </div>
+
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <label class="form-label" for="loginPassword" style="margin-bottom: 0;">Password *</label>
+              <a href="javascript:void(0)" onclick="alert('For demo accounts, use password: student123, warden123, or admin123')" style="font-size: 0.78rem; color: var(--purple-600); font-weight: 600;">Forgot password?</a>
+            </div>
+            <input type="password" id="loginPassword" name="password" class="form-control" placeholder="••••••••" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="roleSelect">Sign In As (Optional):</label>
+            <select name="role" id="roleSelect" class="form-control">
+              <option value="">Auto Detect Role</option>
+              <option value="student">Student</option>
+              <option value="warden">Hostel Warden</option>
+              <option value="admin">Hostel Administrator</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem; font-size: 0.95rem; margin-top: 0.5rem;">
+            <i class="fa-solid fa-right-to-bracket"></i> Sign In to SmartStay
+          </button>
+        </form>
+
+        <div style="margin-top: 2rem; text-align: center; font-size: 0.88rem; color: var(--text-muted);">
+          New student resident? 
+          <a href="{{ url_for('register') }}" style="color: var(--purple-600); font-weight: 700;">Create Student Account</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right visual hero side -->
+    <div class="auth-split-right">
+      <div class="auth-hero-content">
+        <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; margin-bottom: 1.25rem;">
+          <i class="fa-solid fa-shield-halved" style="color: #a78bfa;"></i> Next-Gen College Living
+        </div>
+        <h2>Seamless Hostel Management & Smart Outpass Approvals</h2>
+        <p>Experience hassle-free room allocation, instant digital gate passes, weekly nutrition-packed mess timetable, and transparent grievance redressal all in one platform.</p>
+
+        <div style="display: flex; gap: 2rem; margin-top: 2.5rem; border-top: 1px solid rgba(255, 255, 255, 0.15); padding-top: 1.5rem;">
+          <div>
+            <div style="font-size: 1.6rem; font-weight: 800;">100%</div>
+            <div style="font-size: 0.78rem; color: #cbd5e1;">Paperless Gate Pass</div>
+          </div>
+          <div>
+            <div style="font-size: 1.6rem; font-weight: 800;">24/7</div>
+            <div style="font-size: 0.78rem; color: #cbd5e1;">Complaint Tracking</div>
+          </div>
+          <div>
+            <div style="font-size: 1.6rem; font-weight: 800;">4 Meals</div>
+            <div style="font-size: 0.78rem; color: #cbd5e1;">Curated Mess Timetable</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function quickFill(user, pw, role) {
+      document.getElementById('loginIdentifier').value = user;
+      document.getElementById('loginPassword').value = pw;
+      document.getElementById('roleSelect').value = role;
+    }
+  </script>
+</body>
+</html>

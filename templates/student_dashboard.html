@@ -1,0 +1,464 @@
+{% extends "base.html" %}
+
+{% block title %}Student Dashboard – SmartStay{% endblock %}
+{% block page_title %}Student Resident Dashboard{% endblock %}
+
+{% block content %}
+<!-- Page Header Welcome Row -->
+<div class="page-header-row">
+  <div class="page-title-group">
+    <h1>Welcome back, {{ current_user.full_name }}! 👋</h1>
+    <p class="page-subtitle">Roll No: <strong>{{ student.roll_no }}</strong> • {{ student.department }} ({{ student.year }})</p>
+  </div>
+  <div style="display: flex; gap: 0.75rem;">
+    <button class="btn btn-primary" onclick="openModal('applyOutpassModal')">
+      <i class="fa-solid fa-plus"></i> Apply for Outpass
+    </button>
+    <button class="btn btn-secondary" onclick="openModal('newComplaintModal')">
+      <i class="fa-solid fa-screwdriver-wrench"></i> File Complaint
+    </button>
+  </div>
+</div>
+
+<!-- Key Stats Grid -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Hostel Room</span>
+      <div class="stat-value" style="font-size: 1.6rem; color: var(--purple-700);">
+        {{ student.room_number or 'Unallocated' }}
+      </div>
+      <span class="stat-hint">
+        <i class="fa-solid fa-hotel" style="color: var(--purple-600);"></i> {{ student.block_name or 'General Wing' }}
+      </span>
+    </div>
+    <div class="stat-icon-wrapper purple">
+      <i class="fa-solid fa-bed"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Active Outpass</span>
+      <div class="stat-value" style="font-size: 1.5rem;">
+        {% if latest_active_outpass %}
+          <span style="color: {% if latest_active_outpass.status == 'Approved' %}var(--emerald-600){% else %}var(--amber-600){% endif %};">
+            {{ latest_active_outpass.status }}
+          </span>
+        {% else %}
+          <span style="font-size: 1.25rem; color: var(--text-muted);">None</span>
+        {% endif %}
+      </div>
+      <span class="stat-hint">
+        {% if latest_active_outpass %}
+          {{ latest_active_outpass.destination }}
+        {% else %}
+          All passes completed
+        {% endif %}
+      </span>
+    </div>
+    <div class="stat-icon-wrapper amber">
+      <i class="fa-solid fa-ticket"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Total Outpasses</span>
+      <div class="stat-value">{{ outpass_stats.total }}</div>
+      <span class="stat-hint">
+        <i class="fa-solid fa-check" style="color: var(--emerald-600);"></i> {{ outpass_stats.approved }} approved, {{ outpass_stats.completed }} returned
+      </span>
+    </div>
+    <div class="stat-icon-wrapper emerald">
+      <i class="fa-solid fa-compass"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Today's Day</span>
+      <div class="stat-value" style="font-size: 1.5rem; color: var(--indigo-600);">{{ today_day }}</div>
+      <span class="stat-hint">
+        <i class="fa-solid fa-utensils"></i> 4 Mess Meals Scheduled
+      </span>
+    </div>
+    <div class="stat-icon-wrapper indigo">
+      <i class="fa-solid fa-bowl-food"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Two Column Dashboard Layout -->
+<div style="display: grid; grid-template-columns: 2fr 1.1fr; gap: 1.75rem;">
+
+  <!-- Left Column -->
+  <div>
+    <!-- Active Outpass Banner / Digital Pass Ready Card -->
+    {% if latest_active_outpass %}
+    <div class="card" style="border: 2px solid {% if latest_active_outpass.status == 'Approved' %}var(--emerald-500){% else %}var(--amber-500){% endif %}; background: linear-gradient(135deg, #ffffff 0%, {% if latest_active_outpass.status == 'Approved' %}#f0fdf4{% else %}#fffbeb{% endif %} 100%);">
+      <div class="card-body" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+            <span class="badge {% if latest_active_outpass.status == 'Approved' %}badge-approved{% else %}badge-pending{% endif %}">
+              {{ latest_active_outpass.status }}
+            </span>
+            <span style="font-size: 0.82rem; font-family: monospace; font-weight: 700; color: var(--navy-700);">
+              {{ latest_active_outpass.pass_code }}
+            </span>
+          </div>
+          <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--navy-900);">Destination: {{ latest_active_outpass.destination }}</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+            <i class="fa-regular fa-clock"></i> Leave: <strong>{{ latest_active_outpass.departure_date }} ({{ latest_active_outpass.departure_time }})</strong> • Return: <strong>{{ latest_active_outpass.return_date }} ({{ latest_active_outpass.return_time }})</strong>
+          </p>
+          {% if latest_active_outpass.warden_remarks %}
+            <div style="font-size: 0.82rem; color: var(--navy-700); margin-top: 0.4rem; background: rgba(255,255,255,0.7); padding: 0.3rem 0.6rem; border-radius: 6px; display: inline-block;">
+              <strong>Warden Remarks:</strong> {{ latest_active_outpass.warden_remarks }}
+            </div>
+          {% endif %}
+        </div>
+        <div>
+          {% if latest_active_outpass.status == 'Approved' %}
+            <button class="btn btn-success btn-view-digital-pass" data-id="{{ latest_active_outpass.id }}">
+              <i class="fa-solid fa-qrcode"></i> View Digital Gate Pass
+            </button>
+          {% else %}
+            <span style="font-size: 0.85rem; color: var(--amber-600); font-weight: 600;">
+              <i class="fa-solid fa-hourglass-half"></i> Pending Warden Approval
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Today's Mess Menu Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <i class="fa-solid fa-utensils"></i>
+          <h3>Today's Food Menu ({{ today_day }})</h3>
+        </div>
+        <a href="{{ url_for('food_menu') }}" class="btn btn-secondary btn-sm">
+          Full Weekly Timetable <i class="fa-solid fa-arrow-right"></i>
+        </a>
+      </div>
+      <div class="card-body">
+        <div class="meal-cards-grid">
+          {% for meal in today_meals %}
+          <div class="meal-card">
+            <span class="meal-badge-tag">{{ meal.meal_type }}</span>
+            <div class="meal-title">{{ meal.meal_type }}</div>
+            <div class="meal-time">
+              <i class="fa-regular fa-clock"></i> {{ meal.timings }}
+            </div>
+            <div class="meal-items-list">
+              {{ meal.items }}
+            </div>
+            {% if meal.special_note %}
+              <div style="font-size: 0.76rem; color: var(--purple-700); background: var(--purple-50); padding: 0.35rem 0.65rem; border-radius: 6px;">
+                <i class="fa-solid fa-star"></i> {{ meal.special_note }}
+              </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Outpass History Table Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <h3>Recent Outpass Applications</h3>
+        </div>
+        <a href="{{ url_for('outpass') }}" class="btn btn-secondary btn-sm">View All Outpasses</a>
+      </div>
+      <div class="card-body" style="padding: 0;">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Pass ID</th>
+                <th>Destination</th>
+                <th>Dates</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if recent_outpasses %}
+                {% for o in recent_outpasses %}
+                  <tr>
+                    <td><strong style="font-family: monospace; color: var(--purple-700);">{{ o.pass_code }}</strong></td>
+                    <td>
+                      <div><strong>{{ o.destination }}</strong></div>
+                      <small style="color: var(--text-muted);">{{ o.reason[:32] }}...</small>
+                    </td>
+                    <td>
+                      <small>{{ o.departure_date }} → {{ o.return_date }}</small>
+                    </td>
+                    <td>
+                      <span class="badge badge-{{ o.status|lower }}">{{ o.status }}</span>
+                    </td>
+                    <td>
+                      {% if o.status in ['Approved', 'Completed'] %}
+                        <button class="btn btn-secondary btn-sm btn-view-digital-pass" data-id="{{ o.id }}" title="View Digital Gate Pass">
+                          <i class="fa-solid fa-qrcode"></i> Gate Pass
+                        </button>
+                      {% else %}
+                        <span style="font-size: 0.78rem; color: var(--text-muted);">Submitted</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                    No outpass applications submitted yet.
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right Column -->
+  <div>
+    <!-- Room & Roommates Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <i class="fa-solid fa-door-closed"></i>
+          <h3>Room & Roommates</h3>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="background: var(--bg-subtle); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+            <div>
+              <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">Assigned Space</div>
+              <div style="font-size: 1.4rem; font-weight: 800; color: var(--navy-900);">Room {{ student.room_number or 'N/A' }}</div>
+            </div>
+            <span class="badge badge-approved">{{ student.room_type or 'Standard' }}</span>
+          </div>
+          <div style="font-size: 0.82rem; color: var(--navy-700); display: flex; flex-direction: column; gap: 0.35rem;">
+            <div><i class="fa-solid fa-building" style="color: var(--purple-600); width: 18px;"></i> <strong>Block:</strong> {{ student.block_name or 'Main Wing' }}</div>
+            <div><i class="fa-solid fa-layer-group" style="color: var(--purple-600); width: 18px;"></i> <strong>Floor:</strong> Floor {{ student.floor or 1 }}</div>
+            <div><i class="fa-solid fa-users" style="color: var(--purple-600); width: 18px;"></i> <strong>Capacity:</strong> {{ student.capacity or 2 }} Resident Beds</div>
+          </div>
+        </div>
+
+        <h4 style="font-size: 0.88rem; font-weight: 700; color: var(--navy-900); margin-bottom: 0.75rem;">Roommates</h4>
+        {% if roommates %}
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            {% for rm in roommates %}
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <div class="header-avatar" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                    {{ rm.full_name[:1] }}
+                  </div>
+                  <div>
+                    <div style="font-size: 0.84rem; font-weight: 600; color: var(--navy-900);">{{ rm.full_name }}</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted);">{{ rm.roll_no }} • {{ rm.department[:18] }}</div>
+                  </div>
+                </div>
+                {% if rm.phone %}
+                  <a href="tel:{{ rm.phone }}" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;" title="Call Roommate">
+                    <i class="fa-solid fa-phone"></i>
+                  </a>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="font-size: 0.82rem; color: var(--text-muted); font-style: italic;">No other roommates assigned yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Official Announcements Noticeboard -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <i class="fa-solid fa-bullhorn"></i>
+          <h3>Hostel Announcements</h3>
+        </div>
+        <a href="{{ url_for('announcements') }}" class="btn btn-secondary btn-sm">All</a>
+      </div>
+      <div class="card-body" style="padding: 1rem 1.25rem;">
+        {% if announcements %}
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            {% for a in announcements %}
+              <div style="border-left: 3px solid {% if a.priority == 'Urgent' %}var(--rose-600){% elif a.priority == 'Important' %}var(--amber-500){% else %}var(--purple-600){% endif %}; padding-left: 0.85rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.2rem;">
+                  <span class="badge badge-{{ a.priority|lower }}" style="font-size: 0.65rem; padding: 0.15rem 0.45rem;">{{ a.priority }}</span>
+                  <span style="font-size: 0.72rem; color: var(--text-light);">{{ a.created_at[:10] }}</span>
+                </div>
+                <div style="font-size: 0.86rem; font-weight: 700; color: var(--navy-900); margin-bottom: 0.25rem;">{{ a.title }}</div>
+                <div style="font-size: 0.78rem; color: var(--navy-600); line-height: 1.4;">{{ a.content[:110] }}...</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1rem;">No recent announcements.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Complaints Status Overview -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-title">
+          <i class="fa-solid fa-screwdriver-wrench"></i>
+          <h3>My Complaint Tickets</h3>
+        </div>
+        <a href="{{ url_for('complaints') }}" class="btn btn-secondary btn-sm">Manage</a>
+      </div>
+      <div class="card-body">
+        {% if recent_complaints %}
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            {% for c in recent_complaints %}
+              <div style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                  <span style="font-size: 0.72rem; font-family: monospace; font-weight: 700; color: var(--purple-700);">{{ c.ticket_number }}</span>
+                  <span class="badge badge-{{ c.status|lower|replace(' ', '-') }}">{{ c.status }}</span>
+                </div>
+                <div style="font-size: 0.84rem; font-weight: 600; color: var(--navy-900);">{{ c.title }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+                  Category: <strong>{{ c.category }}</strong> • Room: {{ c.room_number }}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div style="text-align: center; padding: 1.5rem 1rem; color: var(--text-muted);">
+            <i class="fa-solid fa-circle-check" style="font-size: 1.8rem; color: var(--emerald-500); margin-bottom: 0.5rem; display: block;"></i>
+            <span style="font-size: 0.85rem;">No active maintenance issues!</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Apply Outpass Modal -->
+<div class="modal-backdrop" id="applyOutpassModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-ticket" style="color: var(--purple-600); margin-right: 0.5rem;"></i> Apply for Hostel Outpass</h3>
+      <button class="modal-close-btn" data-close-modal="applyOutpassModal">&times;</button>
+    </div>
+    <form id="applyOutpassForm">
+      <div class="modal-body">
+        <div style="background: var(--bg-subtle); padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; font-size: 0.82rem; color: var(--navy-700);">
+          <i class="fa-solid fa-circle-info" style="color: var(--purple-600);"></i>
+          Ensure your parents/guardians are informed. Outpasses for late hours require warden verification.
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Departure Date *</label>
+            <input type="date" name="departure_date" class="form-control" required value="{{ now.strftime('%Y-%m-%d') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Departure Time *</label>
+            <input type="time" name="departure_time" class="form-control" required value="17:00">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Scheduled Return Date *</label>
+            <input type="date" name="return_date" class="form-control" required value="{{ now.strftime('%Y-%m-%d') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Return Curfew Time *</label>
+            <input type="time" name="return_time" class="form-control" required value="20:30">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Destination Address / City *</label>
+          <input type="text" name="destination" class="form-control" placeholder="e.g. Pune (Home) or City Hospital" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Reason for Leaving Campus *</label>
+          <textarea name="reason" class="form-control" placeholder="Detailed explanation for leaving hostel premises..." required rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Parent / Guardian Contact Phone</label>
+          <input type="tel" name="parent_contact" class="form-control" placeholder="+91 98111 22334" value="{{ student.guardian_phone or '' }}">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="applyOutpassModal">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Submit Application</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Submit Complaint Modal -->
+<div class="modal-backdrop" id="newComplaintModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-screwdriver-wrench" style="color: var(--purple-600); margin-right: 0.5rem;"></i> File Maintenance Complaint</h3>
+      <button class="modal-close-btn" data-close-modal="newComplaintModal">&times;</button>
+    </div>
+    <form id="submitComplaintForm">
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Category *</label>
+            <select name="category" class="form-control" required>
+              <option value="Food">Food / Mess</option>
+              <option value="Room maintenance">Room Maintenance</option>
+              <option value="Electricity">Electricity & Appliances</option>
+              <option value="Water">Water & Plumbing</option>
+              <option value="Cleanliness">Cleanliness & Housekeeping</option>
+              <option value="Other issues">Other Issues</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select name="priority" class="form-control">
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Room Number</label>
+          <input type="text" name="room_number" class="form-control" value="{{ student.room_number or '' }}" placeholder="e.g. A-204">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Issue Summary / Title *</label>
+          <input type="text" name="title" class="form-control" placeholder="e.g. Bathroom geyser not warming up" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Detailed Description *</label>
+          <textarea name="description" class="form-control" placeholder="Provide details to help technicians resolve quickly..." required rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="newComplaintModal">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> File Ticket</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Registration – SmartStay</title>
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/logo.jpg') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="background: var(--bg-main); padding: 2.5rem 1rem;">
+  <div style="max-width: 780px; margin: 0 auto; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); border: 1px solid var(--border-color); overflow: hidden;">
+    <!-- Header banner -->
+    <div style="background: linear-gradient(135deg, var(--navy-900) 0%, var(--purple-900) 100%); padding: 2rem 2.5rem; color: #ffffff; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="SmartStay" style="width: 48px; height: 48px; border-radius: 12px;">
+        <div>
+          <h2 style="font-size: 1.5rem; font-weight: 800; line-height: 1.2;">SmartStay Resident Registration</h2>
+          <p style="font-size: 0.85rem; color: #c4b5fd;">Register as a college hostel resident to access digital services.</p>
+        </div>
+      </div>
+      <a href="{{ url_for('login') }}" class="btn btn-secondary btn-sm" style="background: rgba(255, 255, 255, 0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25);">
+        <i class="fa-solid fa-arrow-left"></i> Back to Login
+      </a>
+    </div>
+
+    <!-- Form container -->
+    <div style="padding: 2.5rem;">
+      <!-- Flash alerts -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="toast {{ category }}" style="position: static; margin-bottom: 1.5rem; width: 100%;">
+              <i class="fa-solid fa-circle-info"></i>
+              <div style="flex: 1; font-size: 0.85rem;">{{ message }}</div>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form action="{{ url_for('register') }}" method="POST">
+        <!-- Section 1: Account Credentials -->
+        <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--navy-900); margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+          <i class="fa-solid fa-user-lock" style="color: var(--purple-600); margin-right: 0.5rem;"></i> 1. Account Credentials
+        </h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input type="text" name="full_name" class="form-control" placeholder="e.g. Aarav Mehta" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Username *</label>
+            <input type="text" name="username" class="form-control" placeholder="e.g. aarav_m" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address *</label>
+            <input type="email" name="email" class="form-control" placeholder="e.g. student@college.edu" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Phone Number *</label>
+            <input type="tel" name="phone" class="form-control" placeholder="+91 98765 43210" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password * (Min 6 characters)</label>
+            <input type="password" name="password" class="form-control" placeholder="••••••••" minlength="6" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm Password *</label>
+            <input type="password" name="confirm_password" class="form-control" placeholder="••••••••" minlength="6" required>
+          </div>
+        </div>
+
+        <!-- Section 2: Academic & Personal Info -->
+        <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--navy-900); margin: 1.5rem 0 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+          <i class="fa-solid fa-graduation-cap" style="color: var(--purple-600); margin-right: 0.5rem;"></i> 2. Academic & Personal Information
+        </h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Student Roll Number *</label>
+            <input type="text" name="roll_no" class="form-control" placeholder="e.g. 2024CS108" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Department / Branch</label>
+            <select name="department" class="form-control">
+              <option value="Computer Science & Engineering">Computer Science & Engineering</option>
+              <option value="Electronics & Communication">Electronics & Communication</option>
+              <option value="Mechanical Engineering">Mechanical Engineering</option>
+              <option value="Civil Engineering">Civil Engineering</option>
+              <option value="Information Technology">Information Technology</option>
+              <option value="Business Administration">Business Administration</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current Academic Year</label>
+            <select name="year" class="form-control">
+              <option value="1st Year">1st Year</option>
+              <option value="2nd Year">2nd Year</option>
+              <option value="3rd Year" selected>3rd Year</option>
+              <option value="4th Year">4th Year</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gender</label>
+            <select name="gender" class="form-control">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Section 3: Room Selection & Guardian Details -->
+        <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--navy-900); margin: 1.5rem 0 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+          <i class="fa-solid fa-door-open" style="color: var(--purple-600); margin-right: 0.5rem;"></i> 3. Hostel Room & Guardian Details
+        </h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Select Available Hostel Room</label>
+            <select name="room_id" class="form-control">
+              <option value="">-- Allocate Later / By Warden --</option>
+              {% for r in rooms %}
+                <option value="{{ r.id }}">
+                  {{ r.block_name }} • Room {{ r.room_number }} (Floor {{ r.floor }}, {{ r.type }}, {{ r.current_occupants }}/{{ r.capacity }} Beds)
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Guardian / Parent Name</label>
+            <input type="text" name="guardian_name" class="form-control" placeholder="e.g. Suresh Mehta">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Guardian Emergency Phone</label>
+            <input type="tel" name="guardian_phone" class="form-control" placeholder="+91 98111 22334">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Permanent Home Address</label>
+          <textarea name="address" class="form-control" placeholder="Street, City, State & PIN code..." rows="2"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.9rem; font-size: 1rem; margin-top: 1rem;">
+          <i class="fa-solid fa-user-plus"></i> Complete Resident Registration
+        </button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

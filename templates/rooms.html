@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Rooms & Block Allocation – SmartStay{% endblock %}
+{% block page_title %}Hostel Rooms & Bed Allocations{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header-row">
+  <div class="page-title-group">
+    <h1>Hostel Blocks & Room Allocations</h1>
+    <p class="page-subtitle">Manage student room assignments, bed availability, and floor layouts.</p>
+  </div>
+  <div style="display: flex; gap: 0.75rem;">
+    {% if session.get('role') == 'admin' %}
+      <button class="btn btn-primary" onclick="openModal('addRoomModal')">
+        <i class="fa-solid fa-plus"></i> Add New Room
+      </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Filters Toolbar -->
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-body" style="padding: 1rem 1.5rem;">
+    <div class="filter-bar" style="margin-bottom: 0;">
+      <!-- Block Tabs -->
+      <div class="filter-tabs" style="flex-wrap: wrap;">
+        <a href="{{ url_for('rooms', block='all', status=status_filter) }}" class="filter-tab {% if block_filter == 'all' %}active{% endif %}">
+          All Blocks
+        </a>
+        {% for b in blocks %}
+          <a href="{{ url_for('rooms', block=b.id, status=status_filter) }}" class="filter-tab {% if block_filter == b.id|string %}active{% endif %}">
+            {{ b.name }}
+          </a>
+        {% endfor %}
+      </div>
+
+      <!-- Status Filter -->
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">Occupancy:</span>
+        <select class="form-control" style="width: auto; padding: 0.45rem 0.85rem; font-size: 0.82rem;" onchange="location = this.value;">
+          <option value="{{ url_for('rooms', block=block_filter, status='all') }}" {% if status_filter == 'all' %}selected{% endif %}>All Rooms</option>
+          <option value="{{ url_for('rooms', block=block_filter, status='available') }}" {% if status_filter == 'available' %}selected{% endif %}>Available Beds Only</option>
+          <option value="{{ url_for('rooms', block=block_filter, status='occupied') }}" {% if status_filter == 'occupied' %}selected{% endif %}>Fully Occupied</option>
+        </select>
+      </div>
+
+      <!-- Live Search -->
+      <div class="search-input-wrapper">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" class="form-control table-search-input" data-table="roomsTable" placeholder="Search room number, type, student...">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Unallocated Students Banner if any -->
+{% if unallocated_students %}
+<div class="card" style="border: 1px dashed var(--amber-500); background: #fffdf5; margin-bottom: 1.5rem;">
+  <div class="card-body" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <div style="font-weight: 700; color: var(--amber-700); font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fa-solid fa-triangle-exclamation"></i> {{ unallocated_students|length }} Registered Student(s) Awaiting Room Allocation
+      </div>
+      <div style="font-size: 0.82rem; color: var(--navy-700); margin-top: 0.25rem;">
+        Click "Assign Student" on any room with available beds below to complete room allotment.
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Rooms Table Card -->
+<div class="card">
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="data-table" id="roomsTable">
+        <thead>
+          <tr>
+            <th>Room Number</th>
+            <th>Block & Floor</th>
+            <th>Type</th>
+            <th>Bed Capacity</th>
+            <th>Current Occupants</th>
+            <th>Status</th>
+            <th style="text-align: right;">Allocation Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if rooms %}
+            {% for r in rooms %}
+              <tr>
+                <td>
+                  <strong style="font-size: 1.1rem; color: var(--navy-900);">{{ r.room_number }}</strong>
+                </td>
+                <td>
+                  <div style="font-weight: 600; color: var(--navy-800);">{{ r.block_name }}</div>
+                  <small style="color: var(--text-muted);">Floor {{ r.floor }}</small>
+                </td>
+                <td>
+                  <span class="badge badge-low">{{ r.type }}</span>
+                </td>
+                <td>
+                  <strong>{{ r.current_occupants }}</strong> / {{ r.capacity }} Beds
+                </td>
+                <td>
+                  {% set occs = room_occupants.get(r.id, []) %}
+                  {% if occs %}
+                    <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                      {% for st in occs %}
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-subtle); padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.8rem;">
+                          <span><strong>{{ st.full_name }}</strong> <small style="color: var(--purple-700);">({{ st.roll_no }})</small></span>
+                          <button class="btn btn-secondary btn-sm" style="padding: 0.15rem 0.4rem; color: var(--rose-600); margin-left: 0.5rem;" 
+                                  onclick="deallocateRoom({{ st.id }}, '{{ st.full_name|replace("'", "\\'") }}')" title="Remove student from room">
+                            <i class="fa-solid fa-xmark"></i>
+                          </button>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <span style="font-size: 0.82rem; color: var(--text-muted); font-style: italic;">Vacant (No residents assigned)</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if r.current_occupants >= r.capacity %}
+                    <span class="badge badge-rejected">Full</span>
+                  {% else %}
+                    <span class="badge badge-approved">{{ r.capacity - r.current_occupants }} Bed(s) Available</span>
+                  {% endif %}
+                </td>
+                <td style="text-align: right;">
+                  {% if r.current_occupants < r.capacity %}
+                    <button class="btn btn-primary btn-sm" onclick="openRoomAllotModal({{ r.id }}, '{{ r.room_number }}', '{{ r.block_name|replace("'", "\\'") }}')">
+                      <i class="fa-solid fa-user-plus"></i> Allot Bed
+                    </button>
+                  {% else %}
+                    <span style="font-size: 0.78rem; color: var(--text-muted);">Occupied</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                No rooms match the selected filter.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Allot Student to Room Modal -->
+<div class="modal-backdrop" id="allotStudentModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-bed" style="color: var(--purple-600); margin-right: 0.5rem;"></i> Allot Student to Room</h3>
+      <button class="modal-close-btn" data-close-modal="allotStudentModal">&times;</button>
+    </div>
+    <form id="allocateRoomFormDirect">
+      <input type="hidden" name="room_id" id="allotTargetRoomId">
+      <div class="modal-body">
+        <p style="font-size: 0.9rem; color: var(--navy-800); margin-bottom: 1rem;">
+          Assigning bed in <strong id="allotTargetRoomName" style="color: var(--purple-700);"></strong>.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Select Student to Assign *</label>
+          <select name="student_id" id="allotStudentSelect" class="form-control" required>
+            <option value="">-- Choose Student --</option>
+            {% for s in unallocated_students %}
+              <option value="{{ s.id }}">
+                {{ s.full_name }} ({{ s.roll_no }}) • {{ s.department }} ({{ s.year }})
+              </option>
+            {% endfor %}
+          </select>
+          {% if not unallocated_students %}
+            <small style="color: var(--text-muted); display: block; margin-top: 0.35rem;">
+              All registered students are currently allocated. To reassign, remove a student from their existing room first.
+            </small>
+          {% endif %}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="allotStudentModal">Cancel</button>
+        <button type="submit" class="btn btn-primary" {% if not unallocated_students %}disabled{% endif %}>
+          <i class="fa-solid fa-check"></i> Confirm Allocation
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add Room Modal (Admin) -->
+<div class="modal-backdrop" id="addRoomModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-bed" style="color: var(--purple-600); margin-right: 0.5rem;"></i> Add Hostel Room</h3>
+      <button class="modal-close-btn" data-close-modal="addRoomModal">&times;</button>
+    </div>
+    <form id="addRoomForm">
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Hostel Block *</label>
+            <select name="block_id" class="form-control" required>
+              {% for b in blocks %}
+                <option value="{{ b.id }}">{{ b.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Room Number *</label>
+            <input type="text" name="room_number" class="form-control" placeholder="e.g. A-302" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Floor</label>
+            <input type="number" name="floor" class="form-control" value="1" min="1" max="10">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Capacity (Beds)</label>
+            <input type="number" name="capacity" class="form-control" value="2" min="1" max="6">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Room Type</label>
+            <select name="type" class="form-control">
+              <option value="Double AC">Double AC</option>
+              <option value="Double Non-AC">Double Non-AC</option>
+              <option value="Single AC">Single AC</option>
+              <option value="Triple Sharing">Triple Sharing</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="addRoomModal">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Create Room</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openRoomAllotModal(roomId, roomNumber, blockName) {
+    document.getElementById('allotTargetRoomId').value = roomId;
+    document.getElementById('allotTargetRoomName').textContent = `${blockName} • Room ${roomNumber}`;
+    openModal('allotStudentModal');
+  }
+
+  const directAllocForm = document.getElementById('allocateRoomFormDirect');
+  if (directAllocForm) {
+    directAllocForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(directAllocForm);
+      try {
+        const res = await fetch('/api/rooms/allocate', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          closeModal('allotStudentModal');
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          showToast(data.message, 'danger');
+        }
+      } catch (e) {
+        showToast('Error allocating room.', 'danger');
+      }
+    });
+  }
+</script>
+{% endblock %}

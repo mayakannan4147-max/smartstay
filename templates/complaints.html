@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Complaint Management – SmartStay{% endblock %}
+{% block page_title %}Grievance & Maintenance Redressal{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header-row">
+  <div class="page-title-group">
+    <h1>Hostel Complaints & Maintenance</h1>
+    <p class="page-subtitle">
+      Report facility issues, track maintenance tickets, and monitor resolution timelines.
+    </p>
+  </div>
+  {% if session.get('role') == 'student' %}
+    <button class="btn btn-primary" onclick="openModal('newComplaintModal')">
+      <i class="fa-solid fa-plus"></i> File New Complaint
+    </button>
+  {% endif %}
+</div>
+
+<!-- Stats row for Warden/Admin -->
+{% if session.get('role') in ['warden', 'admin'] and stats %}
+<div class="stats-grid" style="margin-bottom: 1.5rem;">
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Pending Action</span>
+      <div class="stat-value" style="color: var(--rose-600);">{{ stats.pending }}</div>
+    </div>
+    <div class="stat-icon-wrapper rose"><i class="fa-solid fa-hourglass-start"></i></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">In Progress</span>
+      <div class="stat-value" style="color: var(--amber-600);">{{ stats.in_progress }}</div>
+    </div>
+    <div class="stat-icon-wrapper amber"><i class="fa-solid fa-wrench"></i></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Resolved Tickets</span>
+      <div class="stat-value" style="color: var(--emerald-600);">{{ stats.resolved }}</div>
+    </div>
+    <div class="stat-icon-wrapper emerald"><i class="fa-solid fa-circle-check"></i></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-info">
+      <span class="stat-label">Total Tickets Filed</span>
+      <div class="stat-value">{{ stats.total }}</div>
+    </div>
+    <div class="stat-icon-wrapper indigo"><i class="fa-solid fa-list-check"></i></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Filters & Search Toolbar -->
+<div class="card" style="margin-bottom: 1.25rem;">
+  <div class="card-body" style="padding: 1rem 1.5rem;">
+    <div class="filter-bar" style="margin-bottom: 0;">
+      <!-- Status Tabs -->
+      <div class="filter-tabs">
+        <a href="{{ url_for('complaints', status='all', category=category_filter) }}" class="filter-tab {% if status_filter == 'all' %}active{% endif %}">
+          All Statuses
+        </a>
+        <a href="{{ url_for('complaints', status='Pending', category=category_filter) }}" class="filter-tab {% if status_filter == 'Pending' %}active{% endif %}">
+          Pending
+        </a>
+        <a href="{{ url_for('complaints', status='In Progress', category=category_filter) }}" class="filter-tab {% if status_filter == 'In Progress' %}active{% endif %}">
+          In Progress
+        </a>
+        <a href="{{ url_for('complaints', status='Resolved', category=category_filter) }}" class="filter-tab {% if status_filter == 'Resolved' %}active{% endif %}">
+          Resolved
+        </a>
+      </div>
+
+      <!-- Category Filter Dropdown -->
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">Category:</span>
+        <select class="form-control" style="width: auto; padding: 0.45rem 0.85rem; font-size: 0.82rem;" onchange="location = this.value;">
+          <option value="{{ url_for('complaints', status=status_filter, category='all') }}" {% if category_filter == 'all' %}selected{% endif %}>All Categories</option>
+          <option value="{{ url_for('complaints', status=status_filter, category='Food') }}" {% if category_filter == 'Food' %}selected{% endif %}>Food / Mess</option>
+          <option value="{{ url_for('complaints', status=status_filter, category='Room maintenance') }}" {% if category_filter == 'Room maintenance' %}selected{% endif %}>Room Maintenance</option>
+          <option value="{{ url_for('complaints', status=status_filter, category='Electricity') }}" {% if category_filter == 'Electricity' %}selected{% endif %}>Electricity</option>
+          <option value="{{ url_for('complaints', status=status_filter, category='Water') }}" {% if category_filter == 'Water' %}selected{% endif %}>Water & Geyser</option>
+          <option value="{{ url_for('complaints', status=status_filter, category='Cleanliness') }}" {% if category_filter == 'Cleanliness' %}selected{% endif %}>Cleanliness</option>
+          <option value="{{ url_for('complaints', status=status_filter, category='Other issues') }}" {% if category_filter == 'Other issues' %}selected{% endif %}>Other Issues</option>
+        </select>
+      </div>
+
+      <!-- Live Search Box -->
+      <div class="search-input-wrapper">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" class="form-control table-search-input" data-table="complaintsTable" placeholder="Search ticket, room, issue...">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Complaints Data Table Card -->
+<div class="card">
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="data-table" id="complaintsTable">
+        <thead>
+          <tr>
+            <th>Ticket ID</th>
+            {% if session.get('role') != 'student' %}
+              <th>Resident</th>
+            {% endif %}
+            <th>Category & Priority</th>
+            <th>Issue Summary</th>
+            <th>Room</th>
+            <th>Status</th>
+            <th>Resolution Notes</th>
+            {% if session.get('role') in ['warden', 'admin'] %}
+              <th style="text-align: right;">Action</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% if complaints %}
+            {% for c in complaints %}
+              <tr>
+                <td>
+                  <strong style="font-family: monospace; color: var(--purple-700);">{{ c.ticket_number }}</strong>
+                  <div style="font-size: 0.72rem; color: var(--text-light);">{{ c.created_at[:10] }}</div>
+                </td>
+
+                {% if session.get('role') != 'student' %}
+                  <td>
+                    <div style="font-weight: 700; color: var(--navy-900);">{{ c.student_name }}</div>
+                    <small style="color: var(--purple-700);">{{ c.roll_no }}</small>
+                  </td>
+                {% endif %}
+
+                <td>
+                  <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                    <span class="badge badge-low" style="background: var(--bg-subtle);">
+                      {% if c.category == 'Food' %}<i class="fa-solid fa-utensils"></i>
+                      {% elif c.category == 'Electricity' %}<i class="fa-solid fa-bolt"></i>
+                      {% elif c.category == 'Water' %}<i class="fa-solid fa-faucet-drip"></i>
+                      {% elif c.category == 'Cleanliness' %}<i class="fa-solid fa-broom"></i>
+                      {% else %}<i class="fa-solid fa-wrench"></i>{% endif %}
+                      {{ c.category }}
+                    </span>
+                    <span class="badge badge-{{ c.priority|lower }}">{{ c.priority }}</span>
+                  </div>
+                </td>
+
+                <td>
+                  <div style="font-weight: 700; color: var(--navy-900);">{{ c.title }}</div>
+                  <small style="color: var(--navy-600);" title="{{ c.description }}">{{ c.description[:45] }}{% if c.description|length > 45 %}...{% endif %}</small>
+                </td>
+
+                <td>
+                  <strong>{{ c.room_number or 'General' }}</strong>
+                </td>
+
+                <td>
+                  <span class="badge badge-{{ c.status|lower|replace(' ', '-') }}">{{ c.status }}</span>
+                </td>
+
+                <td>
+                  {% if c.resolution_notes %}
+                    <small style="color: var(--emerald-700); font-weight: 500;">
+                      <i class="fa-solid fa-circle-check"></i> {{ c.resolution_notes }}
+                    </small>
+                    {% if c.resolved_by_name %}
+                      <div style="font-size: 0.68rem; color: var(--text-light);">By: {{ c.resolved_by_name }}</div>
+                    {% endif %}
+                  {% else %}
+                    <small style="color: var(--text-muted); font-style: italic;">Awaiting action.</small>
+                  {% endif %}
+                </td>
+
+                {% if session.get('role') in ['warden', 'admin'] %}
+                  <td style="text-align: right;">
+                    <button class="btn btn-secondary btn-sm" onclick="openComplaintStatusModal({{ c.id }}, '{{ c.ticket_number }}', '{{ c.status }}')">
+                      <i class="fa-solid fa-pen-to-square"></i> Update
+                    </button>
+                  </td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                <i class="fa-solid fa-check-double" style="font-size: 2.5rem; color: var(--emerald-500); margin-bottom: 0.75rem; display: block;"></i>
+                No complaints found matching this filter.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Submit Complaint Modal (Students) -->
+<div class="modal-backdrop" id="newComplaintModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-screwdriver-wrench" style="color: var(--purple-600); margin-right: 0.5rem;"></i> File Maintenance Complaint</h3>
+      <button class="modal-close-btn" data-close-modal="newComplaintModal">&times;</button>
+    </div>
+    <form id="submitComplaintForm">
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Category *</label>
+            <select name="category" class="form-control" required>
+              <option value="Food">Food / Mess</option>
+              <option value="Room maintenance">Room Maintenance</option>
+              <option value="Electricity">Electricity & Appliances</option>
+              <option value="Water">Water & Plumbing</option>
+              <option value="Cleanliness">Cleanliness & Housekeeping</option>
+              <option value="Other issues">Other Issues</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select name="priority" class="form-control">
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Room Number</label>
+          <input type="text" name="room_number" class="form-control" value="{{ student.room_number if student else '' }}" placeholder="e.g. A-204">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Issue Summary / Title *</label>
+          <input type="text" name="title" class="form-control" placeholder="e.g. Ceiling fan regulator loose and not controlling speed" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Detailed Description *</label>
+          <textarea name="description" class="form-control" placeholder="Describe the problem accurately so the maintenance team can bring the right tools..." required rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="newComplaintModal">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> File Ticket</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
